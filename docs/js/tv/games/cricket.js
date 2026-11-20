@@ -12,7 +12,7 @@ let loadingPromise = null;
 
 export function createCricket() {
   if (!THREE && !loadingPromise) {
-    loadingPromise = import('/vendor/three/three.module.js')
+    loadingPromise = import('../../vendor/three/three.module.js')
       .then((m) => { THREE = m; })
       .catch((e) => { console.error('Failed to load Three.js', e); loadingPromise = null; });
   }

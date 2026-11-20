@@ -5,12 +5,12 @@
  * fallback). We never send video for gameplay — only 2×21 smoothed landmark
  * pairs, ~600 bytes per frame at 30 Hz.
  */
-import { FilesetResolver, HandLandmarker } from '/vendor/mediapipe/vision_bundle.mjs';
+import { FilesetResolver, HandLandmarker } from '../../vendor/mediapipe/vision_bundle.mjs';
 import { LM, HAND_BONES } from '../shared/protocol.js';
 import { OneEuro, clamp } from '../shared/util.js';
 
-const WASM_PATH = '/vendor/mediapipe';
-const MODEL_PATH = '/vendor/mediapipe/hand_landmarker.task';
+const WASM_PATH = new URL('../../vendor/mediapipe', import.meta.url).href;
+const MODEL_PATH = new URL('../../vendor/mediapipe/hand_landmarker.task', import.meta.url).href;
 const TARGET_FPS = 30;
 
 // Canonical-ish hand shape used by the synthetic dev source and the overlay.
