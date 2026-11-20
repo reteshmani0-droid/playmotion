@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0a0713" />
+<title>PlayMotion — Motion-Controlled Active Play</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ff3d68'/%3E%3Cpath d='M50 4a46 46 0 0 1 0 92z' fill='%23ff8ba8'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/css/landing.css" />
+</head>
+<body>
+<main class="landing">
+  <div class="glow" aria-hidden="true"></div>
+  <header class="head">
+    <div class="kicker">MOTION CONTROLLED · TV EDITION</div>
+    <h1><span>PLAY</span> <b>MOTION</b></h1>
+    <p>Slice fruit with your hands. Your TV runs the game, your phone is the camera.</p>
+  </header>
+
+  <section class="cards">
+    <a class="card tv" href="/tv">
+      <div class="card-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><rect x="4" y="8" width="40" height="26" rx="3" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M18 40h12M24 34v6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </div>
+      <h2>Open on your TV</h2>
+      <p>The full game — menus, physics, sound and scoring. Runs in any modern TV browser.</p>
+      <span class="cta">START THE GAME →</span>
+    </a>
+
+    <a class="card phone" href="/m">
+      <div class="card-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><rect x="13" y="5" width="22" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="24" cy="37" r="2" fill="currentColor"/><path d="M20 12h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </div>
+      <h2>Open on your phone</h2>
+      <p>Scan the QR code shown on the TV instead — this link asks for a room code.</p>
+      <span class="cta">USE AS CAMERA →</span>
+    </a>
+  </section>
+
+  <footer class="foot">
+    <div class="status" id="status"><i></i><span>Checking local server…</span></div>
+    <ol class="quick">
+      <li>Open the TV page on your big screen.</li>
+      <li>Press PLAY and scan the QR with your phone.</li>
+      <li>Allow the camera, step back and slice.</li>
+    </ol>
+  </footer>
+
+  <p class="note">Everything runs on your local network. No account, no install, no paid server.</p>
+</main>
+
+<script type="module">
+  const statusEl = document.getElementById('status');
+  try {
+    const res = await fetch('/api/net', { cache: 'no-store' });
+    const info = await res.json();
+    const secure = info.mobileOrigin.startsWith('https');
+    statusEl.innerHTML = `<i class="ok"></i><span>Local relay online · phone URL ${secure ? 'secure' : 'HTTP (camera needs HTTPS)'}</span>`;
+  } catch {
+    statusEl.innerHTML = '<i class="bad"></i><span>Game server not reachable — start it with <code>npm start</code></span>';
+  }
+</script>
+</body>
+</html>

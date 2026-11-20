@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0714" />
+<title>PlayMotion — Motion-Controlled Active Play</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ff3d68'/%3E%3Cpath d='M50 4a46 46 0 0 1 0 92z' fill='%23ff8ba8'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/css/tv.css" />
+</head>
+<body class="tv">
+
+<canvas id="stage" aria-hidden="true"></canvas>
+<canvas id="pointers" aria-hidden="true"></canvas>
+
+<!-- ===================== HUD ===================== -->
+<div id="hud" class="hud" aria-live="polite">
+  <div class="hud-score-wrap">
+    <div class="hud-label">SCORE</div>
+    <div class="hud-score" id="hud-score">0</div>
+  </div>
+  <div class="hud-combo" id="hud-combo">
+    <div class="hud-combo-n" id="hud-combo-n">×2</div>
+    <div class="combo-track"><i id="hud-combo-bar"></i></div>
+  </div>
+  <div class="hud-right">
+    <div class="lives" id="hud-lives"></div>
+    <div class="hud-best">BEST <b id="hud-best">0</b></div>
+  </div>
+  <button class="icon-btn" id="btn-pause" data-action="pause" aria-label="Pause game">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.4"/><rect x="14" y="4" width="4" height="16" rx="1.4"/></svg>
+  </button>
+</div>
+
+<div id="hint" class="hint">
+  <span class="hint-dot"></span>
+  <span id="hint-text">Show your hands to the phone</span>
+</div>
+
+<!-- ===================== MENU ===================== -->
+<section class="screen" id="screen-menu" aria-label="Main menu">
+  <div class="menu-slash" aria-hidden="true"></div>
+  <div class="menu-deco menu-deco-a" aria-hidden="true">
+    <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="#1f6b2c"/><path d="M60 8a52 52 0 0 1 0 104z" fill="#ff3d68"/><path d="M60 22a38 38 0 0 1 0 76z" fill="#ff8ba8" opacity=".55"/><circle cx="42" cy="44" r="3.4" fill="#2a1010"/><circle cx="48" cy="72" r="3.4" fill="#2a1010"/><circle cx="34" cy="60" r="3.4" fill="#2a1010"/></svg>
+  </div>
+  <div class="menu-deco menu-deco-b" aria-hidden="true">
+    <svg viewBox="0 0 120 120"><path d="M60 114c-26 0-42-18-42-46 0-20 12-32 28-40 4 10 10 14 14 14s10-4 14-14c16 8 28 20 28 40 0 28-16 46-42 46z" fill="#e01f30"/><path d="M60 30c2-10 8-16 16-18-2 12-6 18-16 18z" fill="#5eba46"/><ellipse cx="42" cy="46" rx="9" ry="13" fill="#fff" opacity=".22" transform="rotate(-20 42 46)"/></svg>
+  </div>
+
+  <div class="menu-inner">
+    <div class="brand">
+      <div class="brand-kicker">MOTION CONTROLLED · TV EDITION</div>
+      <h1 class="logo">
+        <span class="logo-top">PLAY</span>
+        <span class="logo-ninja">MOTION</span>
+      </h1>
+      <p class="tagline">Your body is the controller. Your phone is the camera.</p>
+    </div>
+
+    <nav class="menu-actions" aria-label="Main actions">
+      <button class="btn btn-primary btn-play anim-1" data-action="play">
+        <span class="btn-label">PLAY</span>
+        <span class="btn-sub">CLASSIC MODE</span>
+        <span class="shine" aria-hidden="true"></span>
+      </button>
+      <div class="menu-secondary">
+        <button class="btn btn-ghost anim-2" data-action="howto">HOW TO PLAY</button>
+        <button class="btn btn-ghost anim-3" data-action="settings">SETTINGS</button>
+      </div>
+    </nav>
+
+    <footer class="menu-foot">
+      <div class="status-chip" id="menu-status">
+        <span class="dot" id="menu-dot"></span>
+        <span id="menu-status-text">NO PHONE CONNECTED</span>
+      </div>
+      <div class="best-chip">HIGH SCORE <b id="menu-best">0</b></div>
+      <div class="keys-hint">ENTER select · ARROWS move · ESC back</div>
+    </footer>
+  </div>
+</section>
+
+<!-- ===================== HUB ===================== -->
+<section class="screen" id="screen-hub" aria-label="Choose a game">
+  <div class="menu-slash" aria-hidden="true"></div>
+  <div class="hub-inner">
+    <header class="hub-head">
+      <div class="eyebrow">PLAYGROUND</div>
+      <h2 class="title-2">Pick a game</h2>
+      <p class="lead">Move your hands to play. Up to 4 players, no controllers needed.</p>
+    </header>
+    <div class="game-grid" id="game-grid">
+      <!-- populated by app.js -->
+    </div>
+    <footer class="hub-foot">
+      <button class="btn btn-ghost btn-sm" data-action="back-home">HOME</button>
+      <div class="status-chip">
+        <span class="dot" id="hub-dot"></span>
+        <span id="hub-status-text">NO PHONE</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-action="settings">SETTINGS</button>
+    </footer>
+  </div>
+</section>
+
+<!-- ===================== PAIRING ===================== -->
+<section class="screen" id="screen-pair" aria-label="Connect your phone">
+  <div class="panel pair-panel">
+    <div class="pair-copy">
+      <div class="eyebrow">STEP 1 OF 3 · CONNECT</div>
+      <h2 class="title-2">Scan with your phone</h2>
+      <p class="lead">No app, no account. Your phone becomes the camera and turns your hands into blades.</p>
+      <ol class="steps">
+        <li><span class="step-n">1</span><div><b>Open the camera app</b><em>Point it at the QR code on the right.</em></div></li>
+        <li><span class="step-n">2</span><div><b>Allow camera access</b><em>Tap “Allow” when your browser asks.</em></div></li>
+        <li><span class="step-n">3</span><div><b>Prop your phone up</b><em>2–3 metres back, screen facing you.</em></div></li>
+      </ol>
+      <div class="pair-status" id="pair-status">
+        <span class="pulse"></span>
+        <span id="pair-status-text">Waiting for your phone…</span>
+      </div>
+      <div class="row gap">
+        <button class="btn btn-ghost btn-sm" data-action="back">BACK</button>
+        <button class="btn btn-ghost btn-sm" data-action="practice">TRY IT WITH A MOUSE</button>
+      </div>
+    </div>
+    <div class="pair-qr">
+      <div class="qr-frame">
+        <div id="qr" class="qr"></div>
+        <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
+        <div class="qr-corner bl"></div><div class="qr-corner br"></div>
+      </div>
+      <div class="qr-code-line">ROOM <b id="room-code">····</b></div>
+      <div class="qr-url" id="pair-url">connecting…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CALIBRATION ===================== -->
+<section class="screen" id="screen-calib" aria-label="Calibrate your slice zone">
+  <header class="calib-head">
+    <div class="eyebrow">STEP 2 OF 3 · CALIBRATE</div>
+    <h2 class="title-2">Find your slice zone</h2>
+    <p class="lead">Sweep your hands around the glowing frame. We lock the playable area automatically.</p>
+  </header>
+
+  <div class="calib-center" aria-hidden="true">
+    <div class="zone-tag" id="zone-tag">MOVE YOUR HANDS IN THE FRAME</div>
+  </div>
+
+  <aside class="cam-card" id="cam-card">
+    <img id="cam-preview" alt="Camera preview from your phone" />
+    <div class="cam-empty" id="cam-empty">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      <span>Live camera preview<br />appears here</span>
+    </div>
+    <div class="cam-meta"><span class="dot live"></span><span id="cam-hands">0 HANDS</span></div>
+  </aside>
+
+  <div class="calib-foot">
+    <div class="calib-stats">
+      <div class="stat"><b id="calib-fps">--</b><span>TRACKING FPS</span></div>
+      <div class="stat"><b id="calib-latency">--</b><span>LATENCY</span></div>
+      <div class="stat"><b id="calib-coverage">0%</b><span>AREA SET</span></div>
+    </div>
+    <div class="row gap">
+      <button class="btn btn-ghost btn-sm" data-action="recalib">RESET AREA</button>
+      <button class="btn btn-ghost btn-sm" data-action="skipcalib">SKIP</button>
+      <button class="btn btn-primary" data-action="startgame">START SLICING</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PAUSE ===================== -->
+<div class="overlay" id="overlay-pause" role="dialog" aria-modal="true" aria-label="Paused">
+  <div class="panel modal modal-sm">
+    <div class="eyebrow">PAUSED</div>
+    <h2 class="title-2">Take a breath</h2>
+    <div class="modal-actions col">
+      <button class="btn btn-primary" data-action="resume">RESUME</button>
+      <button class="btn btn-ghost" data-action="restart">RESTART</button>
+      <button class="btn btn-ghost" data-action="quit">QUIT TO MENU</button>
+    </div>
+    <div class="modal-note">Press <kbd>ESC</kbd> or use the button on your phone.</div>
+  </div>
+</div>
+
+<!-- ===================== GAME OVER ===================== -->
+<div class="overlay" id="overlay-over" role="dialog" aria-modal="true" aria-label="Game over">
+  <div class="panel modal over-modal">
+    <div class="eyebrow danger" id="over-reason">BOMB!</div>
+    <h2 class="title-2" id="over-title">GAME OVER</h2>
+    <div class="final-score" id="over-score">0</div>
+    <div class="record-badge" id="record-badge">NEW HIGH SCORE</div>
+    <div class="stat-row">
+      <div><b id="over-best">0</b><span>BEST</span></div>
+      <div><b id="over-fruit">0</b><span>FRUIT</span></div>
+      <div><b id="over-combo">0</b><span>COMBO</span></div>
+      <div><b id="over-time">0s</b><span>TIME</span></div>
+    </div>
+    <div class="modal-actions row">
+      <button class="btn btn-primary" data-action="restart">PLAY AGAIN</button>
+      <button class="btn btn-ghost" data-action="quit">BACK TO GAMES</button>
+    </div>
+    <div class="modal-note" id="over-note">Swipe your hand across to go again.</div>
+  </div>
+</div>
+
+<!-- ===================== HOW TO PLAY ===================== -->
+<div class="overlay" id="overlay-howto" role="dialog" aria-modal="true" aria-label="How to play">
+  <div class="panel modal modal-wide">
+    <div class="eyebrow">HOW TO PLAY</div>
+    <h2 class="title-2">Slice. Combo. Don't hit bombs.</h2>
+    <div class="howto-grid">
+      <div class="howto-card">
+        <div class="howto-art"><svg viewBox="0 0 100 100"><path d="M12 78C34 74 62 48 74 22" stroke="#a9f4ff" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M12 78C34 74 62 48 74 22" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="70" cy="38" r="16" fill="#ff4b3e"/><path d="M70 22a16 16 0 0 1 0 32z" fill="#ffb3ad"/></svg></div>
+        <h3>Swipe fast</h3>
+        <p>Move your hand quickly through fruit. Slow movement doesn't cut — speed is everything.</p>
+      </div>
+      <div class="howto-card">
+        <div class="howto-art"><svg viewBox="0 0 100 100"><circle cx="30" cy="34" r="14" fill="#ff9a1f"/><circle cx="70" cy="30" r="11" fill="#e01f30"/><circle cx="50" cy="66" r="13" fill="#ff3d68"/><path d="M14 82C30 58 66 46 88 20" stroke="#ffe066" stroke-width="7" fill="none" stroke-linecap="round"/></svg></div>
+        <h3>Chain combos</h3>
+        <p>Cut several fruit in one swipe for combo multipliers. Three or more gets loud.</p>
+      </div>
+      <div class="howto-card danger">
+        <div class="howto-art"><svg viewBox="0 0 100 100"><circle cx="50" cy="58" r="28" fill="#22252c" stroke="#0c0d11" stroke-width="4"/><rect x="42" y="24" width="16" height="10" rx="3" fill="#c9a15e"/><path d="M50 24c4-12 14-14 16-22" stroke="#8c7a63" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="66" cy="2" r="5" fill="#ffb03a"/><ellipse cx="40" cy="48" rx="8" ry="10" fill="#fff" opacity=".25" transform="rotate(-25 40 48)"/></svg></div>
+        <h3>Avoid bombs</h3>
+        <p>One bomb ends the run instantly. Let them fall — they don't cost you a life.</p>
+      </div>
+      <div class="howto-card">
+        <div class="howto-art"><svg viewBox="0 0 100 100"><path d="M50 86c-18 0-30-14-30-32 0-12 6-22 14-30" stroke="#ff7b8a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M50 86c18 0 30-14 30-32 0-12-6-22-14-30" stroke="#ff7b8a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M28 10l14 14M72 10L58 24" stroke="#ffd76a" stroke-width="6" stroke-linecap="round"/></svg></div>
+        <h3>3 misses = over</h3>
+        <p>Dropped fruit costs a life. Bombs are instant. Keep both hands moving.</p>
+      </div>
+    </div>
+    <div class="howto-setup">
+      <b>Setup:</b> TV and phone on the same Wi-Fi. Phone 2–3 m back at chest height, facing you. Stand where the camera sees both hands.
+    </div>
+    <div class="modal-actions row">
+      <button class="btn btn-ghost" data-action="settings-from-howto">SETTINGS</button>
+      <button class="btn btn-primary" data-action="close">GOT IT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SETTINGS ===================== -->
+<div class="overlay" id="overlay-settings" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="panel modal modal-wide">
+    <div class="eyebrow">SETTINGS</div>
+    <h2 class="title-2">Tune the dojo</h2>
+
+    <div class="settings-grid">
+      <div class="setting">
+        <div class="setting-label"><b>Music</b><span>Taiko &amp; koto loop</span></div>
+        <button class="switch" id="set-music" role="switch" aria-checked="true" data-action="toggle-music"><i></i></button>
+      </div>
+      <div class="setting">
+        <div class="setting-label"><b>Sound effects</b><span>Slices, splats, bombs</span></div>
+        <button class="switch" id="set-sfx" role="switch" aria-checked="true" data-action="toggle-sfx"><i></i></button>
+      </div>
+      <div class="setting slider-setting">
+        <div class="setting-label"><b>Music volume</b><span id="vol-music-val">34%</span></div>
+        <input type="range" id="set-vol-music" min="0" max="100" step="1" value="34" data-setting="musicVolume" />
+      </div>
+      <div class="setting slider-setting">
+        <div class="setting-label"><b>Effects volume</b><span id="vol-sfx-val">75%</span></div>
+        <input type="range" id="set-vol-sfx" min="0" max="100" step="1" value="75" data-setting="sfxVolume" />
+      </div>
+      <div class="setting slider-setting">
+        <div class="setting-label"><b>Slice sensitivity</b><span id="sens-val">1.0×</span></div>
+        <input type="range" id="set-sens" min="50" max="200" step="5" value="100" data-setting="sensitivity" />
+      </div>
+      <div class="setting">
+        <div class="setting-label"><b>Mirror movement</b><span>Flip left/right to match you</span></div>
+        <button class="switch" id="set-mirror" role="switch" aria-checked="true" data-action="toggle-mirror"><i></i></button>
+      </div>
+      <div class="setting">
+        <div class="setting-label"><b>Camera preview</b><span>See yourself while you play</span></div>
+        <button class="switch" id="set-preview" role="switch" aria-checked="true" data-action="toggle-preview"><i></i></button>
+      </div>
+      <div class="setting">
+        <div class="setting-label"><b>Reduce effects</b><span>Lower particle counts</span></div>
+        <button class="switch" id="set-reduce" role="switch" aria-checked="false" data-action="toggle-reduce"><i></i></button>
+      </div>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn btn-ghost btn-sm" data-action="recalibrate">RECALIBRATE</button>
+      <button class="btn btn-ghost btn-sm" data-action="fullscreen">FULLSCREEN</button>
+      <button class="btn btn-ghost btn-sm" data-action="reset-scores">RESET SCORES</button>
+      <button class="btn btn-primary btn-sm" data-action="close">DONE</button>
+    </div>
+    <div class="modal-note" id="settings-net">Local relay: checking…</div>
+  </div>
+</div>
+
+<!-- ===================== PHONE PIP ===================== -->
+<div class="pip" id="pip" aria-hidden="true">
+  <img id="pip-img" alt="" />
+  <div class="pip-badge"><span class="dot live"></span>PHONE</div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="countdown" id="countdown" aria-hidden="true"><span>SLICE!</span></div>
+
+<script src="/vendor/qrcode.js"></script>
+<script src="/vendor/peerjs.js"></script>
+<script type="module" src="/js/tv/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "playmotion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Motion-controlled active-play console for the TV. The TV runs the game, your phone is the camera and hand tracker.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "tunnel": "node server/tunnel.js",
+    "smoke": "node test/smoke.js"
+  },
+  "dependencies": {
+    "qrcode-generator": "^1.4.4",
+    "selfsigned": "^2.4.1",
+    "ws": "^8.18.0"
+  }
+}

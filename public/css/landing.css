@@ -1,0 +1,96 @@
+/* Launcher page */
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+  --paper: #fff6e9;
+  --gold: #ffd76a;
+  --muted: rgba(255, 246, 233, 0.62);
+  --faint: rgba(255, 246, 233, 0.36);
+}
+html { font-size: clamp(14px, 1.5vmin, 20px); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(255, 130, 60, 0.2), transparent 65%),
+    radial-gradient(50% 40% at 85% 90%, rgba(255, 61, 104, 0.14), transparent 70%),
+    linear-gradient(180deg, #120c1e, #06040a 70%);
+  color: var(--paper);
+  font-family: "Segoe UI", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  display: grid;
+  place-items: center;
+  padding: 5vh 5vw;
+  overflow-x: hidden;
+}
+.landing { width: min(1100px, 100%); display: flex; flex-direction: column; gap: 3rem; position: relative; z-index: 1; }
+.glow {
+  position: fixed; inset: auto 0 0 0; height: 50vh; pointer-events: none;
+  background: radial-gradient(60% 100% at 50% 100%, rgba(255, 140, 60, 0.12), transparent 70%);
+}
+.head { text-align: center; }
+.kicker { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.42em; color: var(--gold); margin-bottom: 1rem; }
+h1 {
+  margin: 0;
+  font-size: clamp(3rem, 8vmin, 6.4rem);
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  font-weight: 900;
+  transform: skewX(-6deg);
+  text-shadow: 0 0.05em 0 #6a0c17, 0 0.14em 0.5em rgba(0, 0, 0, 0.55);
+}
+h1 span { color: #fff8ec; }
+h1 b {
+  background: linear-gradient(178deg, #fff3b0 4%, #ffd25e 34%, #ff9d1c 62%, #f64b13 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.head p { margin: 1.4rem auto 0; max-width: 46ch; color: var(--muted); font-size: 1.05rem; line-height: 1.6; }
+
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+.card {
+  display: flex; flex-direction: column; gap: 0.7rem;
+  padding: 1.8rem;
+  border-radius: 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(30, 21, 48, 0.85), rgba(14, 10, 24, 0.92));
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover, .card:focus-visible {
+  transform: translateY(-0.4rem);
+  border-color: rgba(255, 215, 106, 0.55);
+  box-shadow: 0 2rem 5rem rgba(255, 150, 60, 0.18);
+  outline: none;
+}
+.card-icon { width: 3rem; height: 3rem; color: var(--gold); opacity: 0.9; }
+.card-icon svg { width: 100%; height: 100%; }
+.card.phone .card-icon { color: #8ef0ff; }
+.card h2 { margin: 0; font-size: 1.5rem; letter-spacing: -0.01em; }
+.card p { margin: 0; font-size: 0.98rem; line-height: 1.5; color: var(--muted); }
+.cta { margin-top: auto; padding-top: 0.8rem; font-size: 0.82rem; font-weight: 900; letter-spacing: 0.16em; color: var(--gold); }
+.card.phone .cta { color: #8ef0ff; }
+
+.foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.4rem; }
+.status {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  padding: 0.7rem 1.1rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.82rem; color: var(--muted); letter-spacing: 0.03em;
+}
+.status i { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: #ffb03a; }
+.status i.ok { background: #5fe07f; box-shadow: 0 0 0.6rem rgba(95, 224, 127, 0.7); }
+.status i.bad { background: #ff5a5a; }
+.status code { background: rgba(255, 255, 255, 0.1); padding: 0.1em 0.4em; border-radius: 0.3rem; }
+.quick { margin: 0; padding: 0; list-style: none; display: flex; gap: 1.4rem; flex-wrap: wrap; font-size: 0.82rem; color: var(--faint); counter-reset: q; }
+.quick li { counter-increment: q; }
+.quick li::before { content: counter(q) ". "; color: var(--gold); font-weight: 900; }
+.note { margin: 0; text-align: center; font-size: 0.78rem; color: var(--faint); letter-spacing: 0.04em; }
+
+@media (max-width: 760px) {
+  .cards { grid-template-columns: 1fr; }
+  .foot { flex-direction: column; align-items: flex-start; }
+  .quick { flex-direction: column; gap: 0.4rem; }
+}

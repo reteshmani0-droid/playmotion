@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0a0713" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>PlayMotion — Camera</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ff3d68'/%3E%3Cpath d='M50 4a46 46 0 0 1 0 92z' fill='%23ff8ba8'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/css/mobile.css" />
+</head>
+<body class="mobile">
+
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">PLAY <b>MOTION</b><em>CAMERA</em></div>
+    <div class="conn" id="conn" role="status"><i class="dot"></i><span id="conn-text">CONNECTING</span></div>
+  </header>
+
+  <main class="stage" id="stage">
+    <video id="cam" playsinline muted autoplay aria-label="Camera preview"></video>
+    <canvas id="overlay"></canvas>
+
+    <!-- camera permission gate -->
+    <div class="gate" id="camera-gate">
+      <div class="gate-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </div>
+      <h1>Turn on your camera</h1>
+      <p>Your hands become the blade. All tracking happens on this phone — only hand positions are sent to the TV.</p>
+      <button class="cta" id="btn-start">ALLOW CAMERA</button>
+      <ul class="gate-list">
+        <li>Prop the phone up so it can see you</li>
+        <li>Stand 2–3 metres back</li>
+        <li>Wave your hands to check tracking</li>
+      </ul>
+    </div>
+
+    <!-- room code gate -->
+    <div class="gate" id="code-gate" hidden>
+      <div class="gate-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 14h3v3h-3zM20 14v3M14 20h6" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+      </div>
+      <h1>Enter the room code</h1>
+      <p>Type the 4 letters shown on your TV. Or just scan the QR code next time.</p>
+      <form id="code-form" class="code-form" autocomplete="off">
+        <input id="code-input" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="4" placeholder="ABCD" aria-label="Room code" />
+        <button class="cta" type="submit">CONNECT</button>
+      </form>
+    </div>
+
+    <!-- loading -->
+    <div class="loading" id="loading" hidden>
+      <div class="spinner"><i></i><i></i><i></i></div>
+      <p id="loading-text">Starting camera…</p>
+      <div class="track"><i id="loading-bar"></i></div>
+    </div>
+
+    <!-- error -->
+    <div class="gate error-gate" id="error-gate" hidden>
+      <div class="gate-icon warn" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3l9 17H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9v5M12 17.2v.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      </div>
+      <h1 id="error-title">Camera unavailable</h1>
+      <p id="error-text">Something went wrong.</p>
+      <button class="cta" id="btn-retry">TRY AGAIN</button>
+      <p class="fine" id="error-fine"></p>
+    </div>
+
+    <!-- in-game score mirror -->
+    <div class="score-hud" id="score-hud">
+      <div class="sh-score"><span>SCORE</span><b id="m-score">0</b></div>
+      <div class="sh-lives" id="m-lives"></div>
+      <button class="sh-action" id="btn-action">PAUSE</button>
+    </div>
+
+    <div class="stage-status">
+      <span id="m-fps">-- FPS</span>
+      <span id="m-hands">NO HANDS</span>
+    </div>
+
+    <!-- slice power meter -->
+    <div class="power" id="power"><i id="power-fill"></i><b>SLICE POWER</b></div>
+
+    <div class="stage-banner" id="banner"></div>
+  </main>
+
+  <footer class="controls">
+    <div class="row">
+      <button class="pill" id="btn-switch">SWITCH CAMERA</button>
+      <button class="pill" id="btn-cal">CALIBRATE</button>
+    </div>
+    <div class="row">
+      <button class="pill ghost" id="btn-flip">FLIP PREVIEW</button>
+      <button class="pill ghost danger" id="btn-disconnect">DISCONNECT</button>
+    </div>
+    <p class="tip" id="tip">Prop the phone 2–3 m away, screen facing you. Move your hands fast to slice.</p>
+  </footer>
+</div>
+
+<script src="/vendor/peerjs.js"></script>
+<script type="module" src="/js/mobile/main.js"></script>
+</body>
+</html>
