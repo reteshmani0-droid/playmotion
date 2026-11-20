@@ -65,7 +65,8 @@
       </button>
       <div class="menu-secondary">
         <button class="btn btn-ghost anim-2" data-action="howto">HOW TO PLAY</button>
-        <button class="btn btn-ghost anim-3" data-action="settings">SETTINGS</button>
+        <button class="btn btn-ghost anim-2" data-action="setup">CONTROLLER SETUP</button>
+          <button class="btn btn-ghost anim-3" data-action="settings">SETTINGS</button>
       </div>
     </nav>
 
@@ -283,8 +284,8 @@
         <button class="switch" id="set-solo" role="switch" aria-checked="false" data-action="toggle-solo"><i></i></button>
       </div>
       <div class="setting">
-        <div class="setting-label"><b>Nintendo Switch controller</b><span>Enable Joy-Con gyro (Chrome, needs click)</span></div>
-        <button class="btn btn-ghost btn-sm" data-action="enable-switch-gyro">ENABLE GYRO</button>
+        <div class="setting-label"><b>Nintendo Switch controller</b><span>Pro, single Joy-Con, or a pair + gyro</span></div>
+        <button class="btn btn-ghost btn-sm" data-action="setup">SET UP</button>
       </div>
     </div>
 
@@ -295,6 +296,75 @@
       <button class="btn btn-primary btn-sm" data-action="close">DONE</button>
     </div>
     <div class="modal-note" id="settings-net">Local relay: checking…</div>
+  </div>
+</div>
+
+<!-- ===================== CONTROLLER SETUP ===================== -->
+<div class="overlay" id="overlay-setup" role="dialog" aria-modal="true" aria-label="Controller setup">
+  <div class="panel modal modal-wide setup-panel">
+    <div class="eyebrow" id="setup-step-label">STEP 1 OF 2 · INPUT</div>
+    <h2 class="title-2" id="setup-title">How do you want to play?</h2>
+    <p class="lead" id="setup-lead">Pick your controller. You can change this any time from Settings.</p>
+
+    <!-- STEP 1: choose input -->
+    <div class="setup-step" data-step="input">
+      <div class="setup-cards">
+        <button class="setup-card" data-action="setup-choice" data-choice="phone">
+          <span class="setup-icon">📱</span><b>Phone camera</b><em>Scan the QR and wave your hands</em>
+        </button>
+        <button class="setup-card" data-action="setup-choice" data-choice="phone-gyro">
+          <span class="setup-icon">📲</span><b>Phone gyroscope</b><em>Tilt and swing the phone like a bat</em>
+        </button>
+        <button class="setup-card" data-action="setup-choice" data-choice="solo">
+          <span class="setup-icon">📷</span><b>Camera on this TV</b><em>Use a webcam — no phone needed</em>
+        </button>
+        <button class="setup-card" data-action="setup-choice" data-choice="switch">
+          <span class="setup-icon">🎮</span><b>Switch / Joy-Con</b><em>Pro Controller, one Joy-Con, or a pair</em>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: switch controller configuration -->
+    <div class="setup-step" data-step="switch" hidden>
+      <div class="setup-cards setup-cards-3">
+        <button class="setup-card" data-action="setup-pad" data-pad="auto">
+          <span class="setup-icon">🕹️</span><b>Auto / Pro</b><em>Pro Controller or first gamepad</em>
+        </button>
+        <button class="setup-card" data-action="setup-pad" data-pad="pair">
+          <span class="setup-icon">🎮</span><b>Two Joy-Cons</b><em>Left + right as one bat</em>
+        </button>
+        <button class="setup-card" data-action="setup-pad" data-pad="single">
+          <span class="setup-icon">🟦</span><b>One Joy-Con</b><em>Left or right, on its own</em>
+        </button>
+      </div>
+      <div class="setup-help">
+        <b>Pair first:</b> hold the small Sync button on the Joy-Con, open your device's
+        Bluetooth settings, and select <em>Joy-Con (L)</em> / <em>Joy-Con (R)</em>.
+        Then come back here. Aim with a stick, swing with <b>A / R / ZR</b> (or <b>L / ZL</b> on a left Joy-Con).
+      </div>
+      <div class="setup-checks">
+        <div class="setup-check"><span class="check-dot" id="setup-detect-dot"></span><span id="setup-detect-text">Waiting for a controller…</span></div>
+        <div class="setup-check"><span class="check-dot" id="setup-swing-dot"></span><span id="setup-swing-text">Press A / ZR or shake to test your swing</span></div>
+      </div>
+      <div class="setup-aim" id="setup-aim" aria-hidden="true"><i id="setup-aim-dot"></i></div>
+      <div class="setup-buttons">
+        <button class="btn btn-ghost btn-sm" data-action="setup-gyro">ENABLE JOY-CON GYRO</button>
+        <button class="btn btn-ghost btn-sm" data-action="setup-calibrate">CALIBRATE NEUTRAL</button>
+      </div>
+      <div class="setup-note" id="setup-gyro-note">Gyro needs Chrome/Edge on a computer (WebHID). Button swing works everywhere.</div>
+    </div>
+
+    <!-- STEP 2: other controller confirmation -->
+    <div class="setup-step" data-step="other" hidden>
+      <div class="setup-help" id="setup-other-help"></div>
+      <div class="setup-check"><span class="check-dot live" id="setup-other-dot"></span><span id="setup-other-text">Ready.</span></div>
+    </div>
+
+    <div class="modal-actions row">
+      <button class="btn btn-ghost" data-action="setup-back">BACK</button>
+      <button class="btn btn-ghost" data-action="setup-skip">SKIP</button>
+      <button class="btn btn-primary" data-action="setup-done">DONE</button>
+    </div>
   </div>
 </div>
 

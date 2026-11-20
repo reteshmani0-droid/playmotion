@@ -55,7 +55,7 @@ const els = {
 let relay = null;
 let tracker = null;
 let gyro = null;
-let controlMode = store.get('mobile.mode', 'camera') || 'camera';
+let controlMode = params.get('mode') === 'gyro' ? 'gyro' : (store.get('mobile.mode', 'camera') || 'camera');
 let overlay = null;
 let wantPreview = false;
 let seq = 0;

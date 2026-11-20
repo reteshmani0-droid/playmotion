@@ -59,6 +59,8 @@ CMD ["npm", "start"]
 - **Smart TVs (Samsung/LG)**: use the built-in browser; performance varies.
   Prefer a wired/5 GHz connection.
 - **Fire TV / Google TV**: Silk/Chrome work; the TV does not need a camera.
+- **Sony TV**: works via the built-in Chrome browser (Android/Google TV models) or
+  Chromecast — open the PlayMotion TV URL and you're done; no AirPlay needed.
 
 ## Environment variables
 

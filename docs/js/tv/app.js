@@ -108,6 +108,12 @@ let gameOverAt = 0;
 let swipeRestartArmed = false;
 let hintState = '';
 
+// Input/controller setup
+let controlMode = String(store.get('controlMode', '') || ''); // '' = not chosen yet
+let setupChoice = 'switch';
+let setupPadMode = String(store.get('padMode', 'auto') || 'auto');
+let setupSwingSeenAt = 0;
+
 const calib = {
   active: false,
   bounds: null,
@@ -238,6 +244,7 @@ function openOverlay(name) {
 }
 
 function closeOverlay() {
+  cancelAnimationFrame(setupRaf);
   if (!activeOverlay) {
     for (const o of document.querySelectorAll('.overlay')) o.classList.remove('open');
     return;
@@ -254,6 +261,158 @@ function toast(text, ms = 2600) {
   el.classList.add('show');
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ---------------------------------------------------------------------------
+// Controller setup wizard — asks what you want to play with
+// ---------------------------------------------------------------------------
+
+const SETUP_STEPS = {
+  input: {
+    label: 'STEP 1 OF 2 · INPUT',
+    title: 'How do you want to play?',
+    lead: 'Pick your controller. You can change this any time from Settings.',
+  },
+  switch: {
+    label: 'STEP 2 OF 2 · SWITCH / JOY-CON',
+    title: 'Set up your controller',
+    lead: 'Pair it over Bluetooth, choose a mode, then test aim and swing below.',
+  },
+  other: {
+    label: 'STEP 2 OF 2 · READY',
+    title: 'You’re all set',
+    lead: 'Finish and the game will use this controller.',
+  },
+};
+
+function setupStep(name) {
+  const overlay = $('overlay-setup');
+  if (!overlay) return;
+  overlay.querySelectorAll('.setup-step').forEach((el) => { el.hidden = el.dataset.step !== name; });
+  const info = SETUP_STEPS[name] || SETUP_STEPS.input;
+  $('setup-step-label').textContent = info.label;
+  $('setup-title').textContent = info.title;
+  $('setup-lead').textContent = info.lead;
+  overlay.dataset.step = name;
+}
+
+function syncSetupCards() {
+  document.querySelectorAll('[data-action="setup-choice"]').forEach((el) => {
+    el.classList.toggle('selected', el.dataset.choice === setupChoice);
+  });
+  document.querySelectorAll('[data-action="setup-pad"]').forEach((el) => {
+    el.classList.toggle('selected', el.dataset.pad === setupPadMode);
+  });
+}
+
+function openSetup() {
+  openOverlay('setup');
+  // Always ask from the start if no choice made yet; jump to controller details
+  // if they already told us they use a Switch controller.
+  setupStep(controlMode === 'switch' ? 'switch' : 'input');
+  setupChoice = controlMode || 'switch';
+  syncSetupCards();
+  updateSetupLive();
+}
+
+function applySetupChoice(choice) {
+  setupChoice = choice;
+  syncSetupCards();
+  if (choice === 'switch') {
+    setupStep('switch');
+    switchController.setPadMode(setupPadMode);
+    updateSetupLive();
+    return;
+  }
+  const help = {
+    phone: 'Scan the QR code on the TV with your phone, allow camera access, then prop it up facing you. Your hands become the bat.',
+    'phone-gyro': 'Scan the QR code — the phone will start in gyroscope mode automatically. Tilt to aim and swing the phone like a bat. No camera needed.',
+    solo: 'Turn on a webcam for this TV and enable “Camera on this device”. We’ll ask for camera permission when you finish setup.',
+  };
+  $('setup-other-help').textContent = help[choice] || '';
+  $('setup-other-text').textContent = choice === 'solo'
+    ? 'Camera permission will be requested when you press DONE.'
+    : 'Phone pairing will start when you press DONE.';
+  setupStep('other');
+}
+
+function finishSetup() {
+  controlMode = setupChoice;
+  setupPadMode = setupPadMode || 'auto';
+  store.set('controlMode', controlMode);
+  store.set('padMode', setupPadMode);
+  store.set('setupDone', true);
+
+  if (controlMode === 'switch') {
+    switchController.setPadMode(setupPadMode);
+    toast(`Controller ready: ${setupPadMode === 'pair' ? 'two Joy-Cons' : setupPadMode === 'single' ? 'one Joy-Con' : 'auto / Pro'}.`);
+  } else if (controlMode === 'solo') {
+    if (!soloCamera) {
+      soloCamera = true;
+      store.set('soloCamera', true);
+      syncSettingsUi();
+      startSoloCamera();
+    }
+    toast('Camera on this device enabled.');
+  } else {
+    toast(controlMode === 'phone-gyro' ? 'Phone will start in gyroscope mode.' : 'Open the QR code with your phone.');
+  }
+
+  updateMenuStatus();
+  closeOverlay();
+}
+
+// Registers once: any swing (button or gyro) lights up the setup test indicator.
+switchController.onSwing(() => { setupSwingSeenAt = performance.now(); });
+
+switchController.onStatus((s) => {
+  const dot = $('setup-detect-dot');
+  const text = $('setup-detect-text');
+  if (!dot || !text) return;
+  dot.classList.toggle('live', s.connected);
+  const names = {
+    pro: 'Pro Controller detected',
+    pair: 'Two Joy-Cons detected',
+    'joycon-l': 'Left Joy-Con detected',
+    'joycon-r': 'Right Joy-Con detected',
+    gamepad: 'Gamepad detected',
+    none: 'Waiting for a controller…',
+  };
+  text.textContent = names[s.controllerType] || 'Controller detected';
+});
+
+let setupRaf = 0;
+function updateSetupLive() {
+  cancelAnimationFrame(setupRaf);
+  if (activeOverlay !== 'setup' || $('overlay-setup')?.dataset.step !== 'switch') return;
+
+  switchController.poll();
+
+  const aimDot = $('setup-aim-dot');
+  if (aimDot) {
+    const x = clamp(50 + switchController.aimX * 18, 4, 96);
+    const y = clamp(50 - switchController.aimY * 38, 8, 92);
+    aimDot.style.transform = `translate(${x}%, ${y}%)`;
+  }
+
+  const swingDot = $('setup-swing-dot');
+  const swingText = $('setup-swing-text');
+  if (performance.now() - setupSwingSeenAt < 1300) {
+    swingDot?.classList.add('live');
+    if (swingText) swingText.textContent = `SWING DETECTED! (power ${switchController.lastSwingPower.toFixed(1)})`;
+  } else {
+    swingDot?.classList.remove('live');
+    if (swingText) swingText.textContent = 'Press A / ZR or shake to test your swing';
+  }
+
+  const note = $('setup-gyro-note');
+  if (note) {
+    note.textContent = switchController.gyroEnabled
+      ? (switchController.gyroCalibrated ? 'Gyro on and calibrated — swing the Joy-Con like a bat.' : 'Gyro on — press CALIBRATE NEUTRAL while holding still.')
+      : 'Gyro needs Chrome/Edge on a computer (WebHID). Button swing works everywhere.';
+  }
+
+  setupRaf = requestAnimationFrame(updateSetupLive);
 }
 
 function showHint(text) {
@@ -629,6 +788,44 @@ function handleAction(action, el) {
       openOverlay('settings');
       syncSettingsUi();
       break;
+    case 'setup':
+      openSetup();
+      break;
+    case 'setup-choice':
+      applySetupChoice(el?.dataset?.choice || 'phone');
+      break;
+    case 'setup-pad':
+      setupPadMode = el?.dataset?.pad || 'auto';
+      switchController.setPadMode(setupPadMode);
+      syncSetupCards();
+      toast(`Controller mode: ${setupPadMode === 'pair' ? 'two Joy-Cons' : setupPadMode === 'single' ? 'one Joy-Con' : 'auto / Pro'}.`);
+      break;
+    case 'setup-gyro':
+      switchController.enableGyro().then((res) => {
+        toast(res.reason, res.ok ? 4000 : 5500);
+        updateSetupLive();
+      });
+      break;
+    case 'setup-calibrate': {
+      const res = switchController.calibrate();
+      toast(res.reason, res.ok ? 3200 : 4500);
+      updateSetupLive();
+      break;
+    }
+    case 'setup-back': {
+      const step = $('overlay-setup')?.dataset.step;
+      if (step === 'switch' || step === 'other') setupStep('input');
+      else closeOverlay();
+      break;
+    }
+    case 'setup-skip':
+      store.set('setupDone', true);
+      closeOverlay();
+      toast('You can set up a controller any time from the menu.', 3500);
+      break;
+    case 'setup-done':
+      finishSetup();
+      break;
     case 'close':
       closeOverlay();
       break;
@@ -921,7 +1118,14 @@ function updateMenuStatus() {
   const dot = $('menu-dot');
   const text = $('menu-status-text');
   if (!dot || !text) return;
-  if (soloCamera || relay.paired) {
+  if (controlMode === 'switch') {
+    switchController.poll();
+    const types = { pro: 'PRO CONTROLLER', pair: 'TWO JOY-CONS', 'joycon-l': 'JOY-CON (L)', 'joycon-r': 'JOY-CON (R)', gamepad: 'GAMEPAD' };
+    dot.classList.toggle('live', switchController.connected);
+    text.textContent = switchController.connected
+      ? `${types[switchController.controllerType] || 'CONTROLLER'} CONNECTED`
+      : 'SWITCH / JOY-CON · WAITING FOR PAIR';
+  } else if (soloCamera || relay.paired) {
     dot.classList.add('live');
     text.textContent = soloCamera
       ? 'CAMERA ON THIS DEVICE'
@@ -959,7 +1163,8 @@ function renderPairing() {
 
   $('room-code').textContent = roomCode;
   const base = mobileOrigin || location.origin;
-  const url = `${base.replace(/\/$/, '')}/mobile.html?c=${roomCode}`;
+  const modeParam = controlMode === 'phone-gyro' ? '&mode=gyro' : '';
+  const url = `${base.replace(/\/$/, '')}/mobile.html?c=${roomCode}${modeParam}`;
   $('pair-url').textContent = url.replace(/^https?:\/\//, '');
   renderQr(url, base);
 }
@@ -1457,6 +1662,10 @@ function boot() {
 
   // Debug/QA hooks: `?auto=1` starts mouse mode immediately.
   const params = new URLSearchParams(location.search);
+  switchController.setPadMode(setupPadMode);
+  if (!store.get('setupDone') && params.get('auto') !== '1') {
+    setTimeout(() => openSetup(), 800);
+  }
   if (params.get('auto') === '1') {
     setTimeout(() => onPracticeWithMouse(), 600);
   }
@@ -1473,6 +1682,10 @@ function boot() {
       enterCalibration,
       goHub,
       onPracticeWithMouse,
+      switchController,
+      openSetup,
+      finishSetup,
+      get controlMode() { return controlMode; },
       get screen() {
         return screen;
       },

@@ -80,7 +80,14 @@ Phone (camera) ──MediaPipe Hands──► hand landmarks ──WebSocket─�
 - **Mouse** — hold left button and drag to slice / tap
 - **Keyboard** — arrows move focus, Enter/Space select, Esc pause/back, M mute, F fullscreen
 - **Gamepad** — D-pad navigate, A select, B back, right stick as a fallback blade
-- **Nintendo Switch** — Pro Controller / Joy-Cons work over Bluetooth. Right stick aims the bat, A/ZR/R swings or bowls. On Chrome/Edge you can optionally enable Joy-Con gyro in Settings (experimental).
+- **Nintendo Switch / Joy-Con** — Pro Controller, one Joy-Con, or a pair work over Bluetooth. Right stick aims the bat, A/ZR/R swings or bowls (L/ZL on a left Joy-Con). On Chrome/Edge you can enable Joy-Con gyro in Controller Setup and calibrate neutral so you can swing the controller itself.
+
+## Controller setup
+On first launch the TV asks **“How do you want to play?”** and walks you through it:
+Phone camera, phone gyroscope, camera on this TV, or Switch/Joy-Con.
+Reopen it any time with **CONTROLLER SETUP** on the menu (or **SET UP** in Settings).
+For Joy-Cons it asks which arrangement (Auto/Pro, two Joy-Cons, or one), shows live
+connection/aim/swing indicators, and offers gyro enable + calibration.
 
 ## Calibration
 
