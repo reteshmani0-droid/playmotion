@@ -109,7 +109,7 @@ function closeSocket(ws) {
 // ---------------------------------------------------------------------------
 
 function syntaxCheck() {
-  const roots = ['public/js', 'server', 'test'];
+  const roots = ['docs/js', 'server', 'test'];
   const files = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
