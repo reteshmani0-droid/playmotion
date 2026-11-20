@@ -7,7 +7,7 @@
  */
 import { Relay } from '../shared/net.js';
 import { MSG, CMD, handsPacket } from '../shared/protocol.js';
-import { HandTracker } from './tracker.js';
+import { HandTracker } from '../shared/tracker.js';
 import { GyroController } from './gyro.js';
 import { Overlay } from './overlay.js';
 import { clamp, store } from '../shared/util.js';

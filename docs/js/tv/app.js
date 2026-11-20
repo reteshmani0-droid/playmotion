@@ -45,7 +45,9 @@ if (settings.calibrated) {
 let bestScore = Number(store.get('best', 0)) || 0;
 let bestCombo = Number(store.get('bestCombo', 0)) || 0;
 let selectedGameId = String(store.get('selectedGame', 'fruitninja') || 'fruitninja');
-let currentBest = 0;
+let soloCamera = Boolean(store.get('soloCamera', false));
+let soloTracker = null;
+let soloVideo = null;
 
 function bestFor(id) { return Number(store.get(`best.${id}`, 0)) || 0; }
 function setBestFor(id, v) { store.set(`best.${id}`, v); }
@@ -135,6 +137,64 @@ function applyAudioSettings() {
   audio.musicOn = settings.music;
   audio.setMusicVolume(settings.music ? settings.musicVolume : 0);
   audio.setSfxVolume(settings.sfx ? settings.sfxVolume : 0);
+}
+
+// ---------------------------------------------------------------------------
+// Solo camera (this device acts as both TV and controller)
+// ---------------------------------------------------------------------------
+
+async function startSoloCamera() {
+  if (soloTracker) return;
+  soloVideo = document.createElement('video');
+  soloVideo.playsInline = true;
+  soloVideo.muted = true;
+  soloVideo.autoplay = true;
+  soloVideo.style.cssText = 'position:fixed;right:1.2rem;bottom:1.2rem;width:14rem;aspect-ratio:4/3;border-radius:0.8rem;border:1px solid rgba(255,255,255,0.18);z-index:36;object-fit:cover;transform:scaleX(-1);background:#000;';
+  document.body.appendChild(soloVideo);
+
+  let HandTracker;
+  try {
+    ({ HandTracker } = await import('../shared/tracker.js'));
+  } catch (e) {
+    toast('Camera module failed to load.', 4000);
+    stopSoloCamera();
+    return;
+  }
+
+  soloTracker = new HandTracker({
+    video: soloVideo,
+    onFrame: (frame) => {
+      game.pointers.ingestHands({
+        hands: frame.hands.map((h) => ({
+          hand: h.hand, score: h.score, palm: h.palm, tip: h.tip,
+          span: h.span, speed: h.speed, pts: h.pts,
+        })),
+        ts: frame.ts, fps: frame.fps,
+      }, performance.now());
+      lastHandsAt = performance.now();
+      usingPhone = false;
+    },
+    onStatus: (s) => {
+      if (s.error) toast(`Camera: ${s.error}`, 4000);
+    },
+  });
+
+  try {
+    await soloTracker.openCamera('user');
+    await soloTracker.initModel();
+    soloTracker.start();
+    toast('Camera on this device enabled.', 2600);
+  } catch (err) {
+    toast(`Camera unavailable: ${err?.message || err}`, 4000);
+    stopSoloCamera();
+  }
+}
+
+function stopSoloCamera() {
+  soloTracker?.stop();
+  soloTracker?.stopStream();
+  soloTracker = null;
+  if (soloVideo) { soloVideo.remove(); soloVideo = null; }
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +327,7 @@ function goHub() {
 function onPlay() {
   ensureAudio();
   requestFullscreen();
-  if (relay.paired) {
+  if (relay.paired || soloCamera) {
     goHub();
   } else {
     setScreen('pair');
@@ -392,6 +452,7 @@ function syncSettingsUi() {
   setSwitch('set-mirror', settings.mirror);
   setSwitch('set-preview', settings.preview);
   setSwitch('set-reduce', settings.reduceFx);
+  setSwitch('set-solo', soloCamera);
 
   $('set-vol-music').value = String(Math.round(settings.musicVolume * 100));
   $('vol-music-val').textContent = `${Math.round(settings.musicVolume * 100)}%`;
@@ -628,6 +689,13 @@ function handleAction(action, el) {
       toggle('reduceFx');
       game.effects.maxParticles = settings.reduceFx ? 380 : 900;
       break;
+    case 'toggle-solo':
+      soloCamera = !soloCamera;
+      store.set('soloCamera', soloCamera);
+      syncSettingsUi();
+      if (soloCamera) startSoloCamera(); else stopSoloCamera();
+      toast(soloCamera ? 'Camera on this device enabled.' : 'Camera on this device disabled.');
+      break;
     case 'recalibrate':
       closeOverlay();
       if (relay.paired) enterCalibration();
@@ -844,9 +912,11 @@ function updateMenuStatus() {
   const dot = $('menu-dot');
   const text = $('menu-status-text');
   if (!dot || !text) return;
-  if (relay.paired) {
+  if (soloCamera || relay.paired) {
     dot.classList.add('live');
-    text.textContent = `PHONE CONNECTED${relay.rtt != null ? ` · ${relay.rtt} MS` : ''}`;
+    text.textContent = soloCamera
+      ? 'CAMERA ON THIS DEVICE'
+      : `PHONE CONNECTED${relay.rtt != null ? ` · ${relay.rtt} MS` : ''}`;
   } else {
     dot.classList.remove('live');
     text.textContent =
@@ -1300,7 +1370,7 @@ function uiLoop(now) {
   }
 
   // "No hands" guidance + auto-pause.
-  if (screen === 'playing' && game.isPlaying && !game.paused && usingPhone) {
+  if (screen === 'playing' && game.isPlaying && !game.paused && (usingPhone || soloCamera)) {
     const idle = performance.now() - lastHandsAt;
     if (idle > 2200 && idle < 9000) {
       showHint('Step back so the phone can see both hands');
@@ -1349,6 +1419,8 @@ function boot() {
   syncSettingsUi();
   updateMenuStatus();
   updateHubStatus();
+
+  if (soloCamera) startSoloCamera();
 
   $('hud-lives').innerHTML = '<i><span>✕</span></i>'.repeat(3);
   $('calib-latency').textContent = '--';
