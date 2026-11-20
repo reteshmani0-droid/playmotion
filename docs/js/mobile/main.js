@@ -8,6 +8,7 @@
 import { Relay } from '../shared/net.js';
 import { MSG, CMD, handsPacket } from '../shared/protocol.js';
 import { HandTracker } from './tracker.js';
+import { GyroController } from './gyro.js';
 import { Overlay } from './overlay.js';
 import { clamp, store } from '../shared/util.js';
 
@@ -41,6 +42,7 @@ const els = {
   banner: $('banner'),
   tip: $('tip'),
   switch: $('btn-switch'),
+  mode: $('btn-mode'),
   cal: $('btn-cal'),
   flip: $('btn-flip'),
   disconnect: $('btn-disconnect'),
@@ -52,6 +54,8 @@ const els = {
 
 let relay = null;
 let tracker = null;
+let gyro = null;
+let controlMode = store.get('mobile.mode', 'camera') || 'camera';
 let overlay = null;
 let wantPreview = false;
 let seq = 0;
@@ -162,6 +166,34 @@ function cameraErrorMessage(err) {
 // ---------------------------------------------------------------------------
 
 async function startCameraFlow() {
+  if (controlMode === 'gyro') {
+    els.cameraGate.hidden = true;
+    els.errorGate.hidden = true;
+    showLoading('Enabling gyroscope…', 30);
+    try {
+      if (!gyro) {
+        gyro = new GyroController({ onFrame, onStatus: (s) => {
+          if (s.error) showError('Gyroscope error', s.error, 'Try again.', 'camera');
+        } });
+      }
+      await gyro.requestPermission();
+      showLoading('Calibrating…', 70);
+      gyro.start();
+      gyro.calibrate();
+      hideLoading();
+      requestWakeLock();
+      banner('Gyroscope ready · tilt to steer, swing to hit', 3000);
+      sendStatus(true);
+      // hide camera-specific UI
+      els.switch.style.display = 'none';
+      els.flip.style.display = 'none';
+    } catch (err) {
+      console.error('gyro start failed', err);
+      showError('Gyroscope unavailable', err?.message || 'Permission denied or no sensor.', 'Use camera mode instead.', 'camera');
+    }
+    return;
+  }
+
   if (fakeMode) {
     els.cameraGate.hidden = true;
     els.loading.hidden = true;
@@ -331,7 +363,13 @@ function applyTvState() {
       } else {
         banner('');
       }
-      els.tip.textContent = 'Move fast to slice. Two hands = two blades. Avoid bombs!';
+      if (tvState.game === 'cricket') {
+        els.tip.textContent = controlMode === 'gyro'
+          ? 'Tilt to aim, swing fast to hit. Avoid wickets!'
+          : 'Move your hand to aim the bat, swing fast to hit.';
+      } else {
+        els.tip.textContent = 'Move fast to slice. Two hands = two blades. Avoid bombs!';
+      }
       break;
     case tvState.screen === 'gameover':
       banner('GAME OVER\nTap Play Again on either screen', 0);
@@ -416,6 +454,7 @@ function initRelay() {
     if (msg.t === MSG.STATE) {
       tvState = {
         screen: msg.screen || 'menu',
+        game: msg.game || null,
         paused: Boolean(msg.paused),
         score: msg.score || 0,
         lives: msg.lives ?? 3,
@@ -499,7 +538,34 @@ els.switch.addEventListener('click', async () => {
   }
 });
 
-els.flip.addEventListener('click', () => {
+els.mode = $('btn-mode');
+
+els.mode.addEventListener('click', async () => {
+  controlMode = controlMode === 'camera' ? 'gyro' : 'camera';
+  store.set('mobile.mode', controlMode);
+  els.mode.textContent = `MODE: ${controlMode.toUpperCase()}`;
+  // stop any active tracking
+  tracker?.stop();
+  tracker?.stopStream();
+  gyro?.stop();
+  // reset gates
+  els.cameraGate.hidden = false;
+  els.errorGate.hidden = true;
+  els.loading.hidden = true;
+  banner(controlMode === 'gyro' ? 'Gyroscope mode — tilt your phone like a bat' : 'Camera mode — show your hands', 2600);
+  if (controlMode === 'camera') {
+    els.start.textContent = fakeMode ? 'START SIMULATION' : 'ALLOW CAMERA';
+    els.switch.style.display = '';
+    els.flip.style.display = '';
+  } else {
+    els.start.textContent = 'ENABLE GYROSCOPE';
+    els.switch.style.display = 'none';
+    els.flip.style.display = 'none';
+  }
+});
+
+// set initial label
+if (els.mode) els.mode.textContent = `MODE: ${controlMode.toUpperCase()}`;
   overlay.flip = !overlay.flip;
   store.set('mobile.flip', overlay.flip);
   els.flip.textContent = overlay.flip ? 'FLIP PREVIEW ON' : 'FLIP PREVIEW OFF';
@@ -509,6 +575,7 @@ els.disconnect.addEventListener('click', () => {
   relay?.close(false);
   tracker?.stop();
   tracker?.stopStream();
+  gyro?.stop();
   try {
     wakeLock?.release();
   } catch {}
@@ -601,6 +668,10 @@ function boot() {
 
   if (fakeMode) {
     els.start.textContent = 'START SIMULATION';
+  } else if (controlMode === 'gyro') {
+    els.start.textContent = 'ENABLE GYROSCOPE';
+    els.switch.style.display = 'none';
+    els.flip.style.display = 'none';
   }
 
   if ('serviceWorker' in navigator) {

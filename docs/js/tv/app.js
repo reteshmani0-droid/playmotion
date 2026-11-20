@@ -1108,6 +1108,7 @@ function sendState() {
     t: MSG.STATE,
     screen,
     overlay: activeOverlay,
+    game: game.currentId,
     score: game.state.score,
     best: bestScore,
     lives: game.state.lives,
