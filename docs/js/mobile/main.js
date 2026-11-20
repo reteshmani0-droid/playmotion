@@ -566,6 +566,8 @@ els.mode.addEventListener('click', async () => {
 
 // set initial label
 if (els.mode) els.mode.textContent = `MODE: ${controlMode.toUpperCase()}`;
+
+els.flip.addEventListener('click', () => {
   overlay.flip = !overlay.flip;
   store.set('mobile.flip', overlay.flip);
   els.flip.textContent = overlay.flip ? 'FLIP PREVIEW ON' : 'FLIP PREVIEW OFF';
