@@ -15,7 +15,7 @@ import { createWhackAMole } from '../games/whackamole.js';
 import { createStarCatcher } from '../games/starcatcher.js';
 import { createBalloonPop } from '../games/balloonpop.js';
 import { createColorRush } from '../games/colorrush.js';
-import { createCricket } from '../games/cricket.js';
+import { createCricket } from '../games/cricket.js?v=2';
 
 const GAME_FACTORIES = {
   fruitninja: createFruitNinja,

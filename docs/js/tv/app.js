@@ -513,12 +513,17 @@ function showGameOver(payload) {
   $('over-fruit').textContent = String(payload.sliced ?? 0);
   $('over-combo').textContent = `×${payload.maxCombo || 0}`;
   $('over-time').textContent = `${Math.round(payload.time)}s`;
-  $('over-reason').textContent = payload.reason === 'bomb' ? 'BOMB!' : payload.reason === 'time' ? 'TIME UP' : 'OUT OF LIVES';
+  $('over-reason').textContent = payload.reason === 'bomb' ? 'BOMB!'
+    : payload.reason === 'win' ? 'YOU WIN!'
+    : payload.reason === 'loss' ? 'YOU LOSE'
+    : payload.reason === 'time' ? 'TIME UP'
+    : payload.reason === 'wickets' || payload.reason === 'overs' ? 'INNINGS OVER'
+    : 'GAME OVER';
   const gameMeta = GAME_LIST.find((g) => g.id === id);
-  $('over-title').textContent = payload.reason === 'bomb'
-    ? 'Boom. Game over.'
-    : payload.reason === 'time'
-    ? `${gameMeta?.title || 'Game'} over!`
+  $('over-title').textContent = payload.reason === 'bomb' ? 'Boom. Game over.'
+    : payload.reason === 'win' ? 'Victory!'
+    : payload.reason === 'loss' ? 'Defeat.'
+    : payload.reason === 'time' ? `${gameMeta?.title || 'Game'} over!`
     : 'Nice try!';
   $('over-note').textContent = 'Swipe across the screen — or pick an option.';
   $('record-badge').classList.toggle('show', isRecord);
