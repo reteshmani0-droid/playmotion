@@ -430,8 +430,8 @@ export function createCricket() {
         if (bowlTimer <= 0) bowl();
       } else if (ballState === 'bowling') {
         ballVel.y -= 9.8 * dt;
-        ballPos.addScaledVector(ballVel, dt);
-        ball.position.copy(ballPos);
+        if (ballPos) ballPos.addScaledVector(ballVel, dt);
+        if (ball && ballPos) ball.position.copy(ballPos);
         ball.rotation.x += dt * 14;
         if (Math.abs(ballPos.z - 9) < 2.2 && !hitWindow) { hitWindow = true; hitTime = 0; }
         if (hitWindow) hitTime += dt;
@@ -463,8 +463,8 @@ export function createCricket() {
 
       if (ballState === 'bowling') {
         ballVel.y -= 9.8 * dt;
-        ballPos.addScaledVector(ballVel, dt);
-        ball.position.copy(ballPos);
+        if (ballPos) ballPos.addScaledVector(ballVel, dt);
+        if (ball && ballPos) ball.position.copy(ballPos);
         ball.rotation.x += dt * 14;
         // when ball reaches batsman (z ~ 9), AI plays
         if (ballPos.z > 8 && ballPos.z < 10 && !hitWindow) {
