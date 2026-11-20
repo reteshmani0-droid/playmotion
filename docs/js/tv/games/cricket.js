@@ -110,7 +110,7 @@ export function createCricket() {
       ctx.fillStyle = `rgba(${40 + Math.random()*30}, ${100 + Math.random()*40}, ${40 + Math.random()*20}, 0.6)`;
       ctx.fillRect(x, y, 2, 2);
     }
-    const tex = new (T())().CanvasTexture(c);
+    const tex = new (T()).CanvasTexture(c);
     tex.wrapS = tex.wrapT = (T()).RepeatWrapping;
     tex.repeat.set(8, 8);
     return tex;
@@ -128,7 +128,7 @@ export function createCricket() {
       ctx.fillStyle = `rgba(${160 + Math.random()*30}, ${130 + Math.random()*20}, ${80 + Math.random()*20}, 0.4)`;
       ctx.fillRect(Math.random()*128, Math.random()*512, 1, 1);
     }
-    const tex = new (T())().CanvasTexture(c);
+    const tex = new (T()).CanvasTexture(c);
     return tex;
   }
 
@@ -148,7 +148,7 @@ export function createCricket() {
       ctx.lineTo(Math.random()*64, 256);
       ctx.stroke();
     }
-    const tex = new (T())().CanvasTexture(c);
+    const tex = new (T()).CanvasTexture(c);
     return tex;
   }
 
@@ -156,6 +156,8 @@ export function createCricket() {
     if (scene) return;
     const TH = T();
     if (!TH) return;
+    window.__ensureRan = true;
+    try {
     if (!ballPos) { ballPos = new TH.Vector3(); ballVel = new TH.Vector3(); ballTarget = new TH.Vector3(); }
 
     const stage = document.getElementById('stage');
@@ -333,6 +335,7 @@ export function createCricket() {
     t0 = performance.now() / 1000;
     const stg = document.getElementById('stage');
     if (stg) stg.style.display = 'none';
+    } catch (e) { console.error('ensureScene failed:', e && e.message, e && e.stack); }
   }
 
   function bowl() {
@@ -432,7 +435,7 @@ export function createCricket() {
         ballVel.y -= 9.8 * dt;
         if (ballPos) ballPos.addScaledVector(ballVel, dt);
         if (ball && ballPos) ball.position.copy(ballPos);
-        ball.rotation.x += dt * 14;
+        if (ball) ball.rotation.x += dt * 14;
         if (Math.abs(ballPos.z - 9) < 2.2 && !hitWindow) { hitWindow = true; hitTime = 0; }
         if (hitWindow) hitTime += dt;
         if (ballPos.z > 11) {
@@ -465,7 +468,7 @@ export function createCricket() {
         ballVel.y -= 9.8 * dt;
         if (ballPos) ballPos.addScaledVector(ballVel, dt);
         if (ball && ballPos) ball.position.copy(ballPos);
-        ball.rotation.x += dt * 14;
+        if (ball) ball.rotation.x += dt * 14;
         // when ball reaches batsman (z ~ 9), AI plays
         if (ballPos.z > 8 && ballPos.z < 10 && !hitWindow) {
           hitWindow = true;
@@ -660,6 +663,6 @@ export function createCricket() {
     cleanup() { cleanup(); },
     isOver() { return !state.running && (state.balls > 0 || state.oppBalls > 0); },
     get mode() { return 'classic'; },
-    get _debug() { return { ballState, phase: state.phase, bowlTimer, sceneReady: !!scene }; },
+    get _debug() { return { ballState, phase: state.phase, bowlTimer, sceneReady: !!scene, sceneType: scene?.constructor?.name, ballExists: !!ball, batExists: !!bat, hasEnsureRun: window.__ensureRan }; },
   };
 }
