@@ -73,6 +73,7 @@ Phone (camera) ──MediaPipe Hands──► hand landmarks ──WebSocket─�
 | Star Catcher | Move your hands to catch falling stars and gems. Avoid bombs |
 | Balloon Pop | Pop rising balloons. Bombs end the run |
 | Color Rush | Touch only the targets matching the prompt color |
+| 3D Cricket | First-person batting and bowling. Aim with your hand/stick, swing to hit or deliver |
 
 ## Controls
 

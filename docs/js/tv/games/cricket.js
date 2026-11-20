@@ -52,7 +52,10 @@ export function createCricket() {
   let ball = null, bat = null, batsman = null, bowler = null;
   let stumpsBat = null, stumpsBowl = null;
   let pitch = null, ground = null;
-  let sky = null;
+  let sky = null, heldBall = null;
+  let batGhosts = [];
+  let camLook = null, camPosTarget = null, camLookTarget = null;
+  let onGlResize = null;
 
   // ball state
   let ballState = 'idle';
@@ -87,7 +90,7 @@ export function createCricket() {
     ballState = 'idle'; bowlTimer = 1.4; hitWindow = false; hitTime = 0;
     swingCooldown = 0; batSwing = 0; batSwinging = false;
     resultText = ''; resultTimer = 0; gameOverTimer = 0;
-    handX = 0.5; handY = 0.5; batTargetX = 0; batTargetY = 1.0;
+    handX = 0.5; handY = 0.5; batTargetX = 0; batTargetY = 0;
     bowlAim = 0; bowlPower = 0; bowlCharging = false;
     if (host) host.effects.reset();
   }
@@ -100,10 +103,17 @@ export function createCricket() {
 
   function cleanup() {
     activeSwingHandler = null;
+    if (onGlResize) { window.removeEventListener('resize', onGlResize); onGlResize = null; }
+    if (camera) {
+      [bat, heldBall, ...batGhosts].forEach((o) => { if (o && o.parentNode) o.parentNode.remove(o); });
+      if (scene) scene.remove(camera);
+    }
+    batGhosts = []; heldBall = null;
     if (glCanvas && glCanvas.parentNode) glCanvas.parentNode.removeChild(glCanvas);
     glCanvas = null;
     if (renderer) { renderer.dispose(); renderer = null; }
-    scene = null; camera = null; ball = null; bat = null;
+    scene = null; camera = null; camLook = null; camPosTarget = null; camLookTarget = null;
+    ball = null; bat = null;
     batsman = null; bowler = null; stumpsBat = null; stumpsBowl = null;
     pitch = null; ground = null; sky = null;
     ['cricket-result','cricket-phase','cricket-scorebug'].forEach(id => {
@@ -167,6 +177,39 @@ export function createCricket() {
     return tex;
   }
 
+  // ---------- first-person bat swing ----------
+  // Poses are in CAMERA-LOCAL space so the bat reads as "in your hands".
+  // Sequence: ready -> back lift -> contact -> follow-through -> ready.
+  const BAT_POSES = [
+    { px: 0.52, py: -0.82, pz: -1.30, rx: -0.22, ry: -0.12, rz: -0.30 },
+    { px: 0.66, py: -0.46, pz: -1.02, rx: -1.02, ry: 0.26, rz: -0.52 },
+    { px: 0.06, py: -0.56, pz: -1.52, rx: 0.12, ry: -0.10, rz: 0.28 },
+    { px: -0.50, py: -0.74, pz: -1.12, rx: 0.78, ry: -0.44, rz: 0.98 },
+  ];
+
+  function smooth(a, b, t) {
+    const x = clamp((t - a) / (b - a), 0, 1);
+    return x * x * (3 - 2 * x);
+  }
+
+  function batPoseAt(swing) {
+    const s = clamp(swing, 0, 1);
+    let from, to, k;
+    if (s < 0.22) { from = BAT_POSES[0]; to = BAT_POSES[1]; k = smooth(0, 0.22, s); }
+    else if (s < 0.42) { from = BAT_POSES[1]; to = BAT_POSES[2]; k = smooth(0.22, 0.42, s); }
+    else if (s < 0.70) { from = BAT_POSES[2]; to = BAT_POSES[3]; k = smooth(0.42, 0.70, s); }
+    else { from = BAT_POSES[3]; to = BAT_POSES[0]; k = smooth(0.70, 1, s); }
+    const mix = (key) => from[key] + (to[key] - from[key]) * k;
+    return { px: mix('px'), py: mix('py'), pz: mix('pz'), rx: mix('rx'), ry: mix('ry'), rz: mix('rz') };
+  }
+
+  function applyBatPose(group, swing, swayX = 0, swayY = 0) {
+    if (!group) return;
+    const p = batPoseAt(swing);
+    group.position.set(p.px + swayX, p.py + swayY, p.pz);
+    group.rotation.set(p.rx, p.ry, p.rz);
+  }
+
   function ensureScene() {
     if (scene) return;
     const TH = T();
@@ -198,9 +241,22 @@ export function createCricket() {
     scene.background = new TH.Color(0x87ceeb);
     scene.fog = new TH.Fog(0xc9e2f0, 60, 160);
 
-    camera = new TH.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 300);
-    camera.position.set(0, 9, 22);
-    camera.lookAt(0, 1, 0);
+    // First-person: stand at the batsman's crease, eyes down the pitch.
+    camera = new TH.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.05, 300);
+    camera.position.set(0, 1.72, 9.45);
+    camLook = new TH.Vector3(0, 1.15, -6);
+    camPosTarget = new TH.Vector3().copy(camera.position);
+    camLookTarget = new TH.Vector3().copy(camLook);
+    camera.lookAt(camLook);
+    scene.add(camera);
+
+    onGlResize = () => {
+      if (!renderer || !camera) return;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener('resize', onGlResize);
 
     // lights
     const hemi = new TH.HemisphereLight(0xfff4e0, 0x3a5f3a, 0.6);
@@ -299,20 +355,56 @@ export function createCricket() {
     const legR = new TH.Mesh(new TH.CylinderGeometry(0.08, 0.07, 0.75, 8), pantsMat);
     legR.position.set(0.12, 0.38, 0); legR.castShadow = true; batsman.add(legR);
     batsman.position.set(0, 0, 9);
+    batsman.visible = false; // first person: you ARE the batsman while batting
     scene.add(batsman);
 
-    // bat (tapered)
+    // Bat, held in camera space. Local +Y is the blade direction; the handle
+    // sits at the group origin so it pivots naturally in your hands.
     bat = new TH.Group();
-    const batMat = new TH.MeshStandardMaterial({ map: makeWoodTexture(), roughness: 0.4 });
-    const blade = new TH.Mesh(new TH.BoxGeometry(0.11, 0.06, 1.05), batMat);
-    blade.position.set(0, 0, 0.5); blade.castShadow = true; bat.add(blade);
-    // taper
-    const taper = new TH.Mesh(new TH.BoxGeometry(0.11, 0.06, 0.15), batMat);
-    taper.position.set(0, 0, -0.08); taper.castShadow = true; bat.add(taper);
-    const handle = new TH.Mesh(new TH.CylinderGeometry(0.028, 0.032, 0.32, 8), new TH.MeshStandardMaterial({ color: 0x5d3a1a, roughness: 0.6 }));
-    handle.position.set(0, 0, -0.32); handle.rotation.x = Math.PI / 2; bat.add(handle);
-    bat.position.set(0.4, 1.0, 9);
-    scene.add(bat);
+    const batMat = new TH.MeshStandardMaterial({ map: makeWoodTexture(), roughness: 0.42, metalness: 0.02 });
+    const blade = new TH.Mesh(new TH.BoxGeometry(0.135, 0.98, 0.055), batMat);
+    blade.position.y = 0.6; blade.castShadow = true; bat.add(blade);
+    const toe = new TH.Mesh(new TH.BoxGeometry(0.135, 0.07, 0.055), batMat);
+    toe.position.y = 1.1; bat.add(toe);
+    const shoulder = new TH.Mesh(new TH.CylinderGeometry(0.036, 0.056, 0.2, 12), batMat);
+    shoulder.position.y = 0.075; bat.add(shoulder);
+    const gripMat = new TH.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.85 });
+    const handle = new TH.Mesh(new TH.CylinderGeometry(0.027, 0.031, 0.42, 10), gripMat);
+    handle.position.y = -0.18; bat.add(handle);
+    for (let i = 0; i < 5; i++) {
+      const band = new TH.Mesh(new TH.TorusGeometry(0.029, 0.004, 6, 12), new TH.MeshStandardMaterial({ color: 0x494952, roughness: 0.9 }));
+      band.rotation.x = Math.PI / 2; band.position.y = -0.34 + i * 0.08; bat.add(band);
+    }
+    applyBatPose(bat, 0);
+    camera.add(bat);
+
+    // Motion-blur ghosts: trail the bat during the fast part of the swing.
+    batGhosts = [];
+    for (let i = 0; i < 2; i++) {
+      const ghost = bat.clone(true);
+      ghost.traverse((o) => {
+        if (o.isMesh) {
+          o.material = new TH.MeshBasicMaterial({
+            color: i === 0 ? 0xffe6a8 : 0xffc266,
+            transparent: true, opacity: 0, blending: TH.AdditiveBlending,
+            depthWrite: false,
+          });
+          o.castShadow = false;
+        }
+      });
+      applyBatPose(ghost, 0);
+      camera.add(ghost);
+      batGhosts.push(ghost);
+    }
+
+    // Ball held in the bowling hand before release.
+    heldBall = new TH.Mesh(
+      new TH.SphereGeometry(0.055, 16, 12),
+      new TH.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.35 }),
+    );
+    heldBall.position.set(0.46, -0.42, -0.85);
+    heldBall.visible = false;
+    camera.add(heldBall);
 
     // bowler
     bowler = new TH.Group();
@@ -370,13 +462,12 @@ export function createCricket() {
     );
     ball.visible = true;
     hitWindow = false; hitTime = 0;
-    batSwinging = false; batSwing = 0;
     bowlCharging = false; bowlPower = 0;
   }
 
   function update(dt, h) {
     host = h;
-    if (!state.running) { if (scene) renderScene(); return; }
+    if (!state.running) { if (scene) renderScene(dt); return; }
     state.time += dt;
 
     ensureScene();
@@ -411,34 +502,42 @@ export function createCricket() {
     }
 
     if (state.phase === 'batting') {
-      // bat follows hand
-      batTargetX = (handX - 0.5) * 2.4;
-      batTargetY = 0.9 + (1 - handY) * 1.2;
-      if (bat) {
-        bat.position.x += (batTargetX - bat.position.x) * 0.25;
-        bat.position.y += (batTargetY - bat.position.y) * 0.25;
-      }
-      // swing detection
+      // First person: hide your own body, face the bowler, hold the bat in view.
+      if (batsman) batsman.visible = false;
+      if (bowler) bowler.visible = true;
+      if (bat) bat.visible = true;
+      if (heldBall) heldBall.visible = false;
+
+      // Your hands subtly steer the bat and the first-person view.
+      batTargetX = (handX - 0.5) * 0.34;
+      batTargetY = (0.5 - handY) * 0.22;
+
+      // Swing detection (hand blades; Switch/gyro use the shared callback).
       if (!batSwinging && swingCooldown <= 0) {
         for (const b of blades) {
           if (b.speed > 500 && Math.abs(b.vx) > 250) {
-            batSwinging = true; batSwing = 0; swingCooldown = 0.5;
+            batSwinging = true; batSwing = 0; swingCooldown = 0.55;
             lastSwingSpeed = b.speed;
             if (ballState === 'bowling' && ballPos.z > 4 && ballPos.z < 12) tryHit(h);
             break;
           }
         }
       }
+
+      // Play the full arc: back lift -> contact -> follow-through -> ready.
       if (batSwinging) {
-        batSwing += dt * 10;
+        batSwing += dt * 2.7;
         if (batSwing >= 1) { batSwing = 1; batSwinging = false; }
-      } else if (batSwing > 0) {
-        batSwing = Math.max(0, batSwing - dt * 5);
       }
-      if (bat) {
-        bat.rotation.x = -Math.PI / 2 + batSwing * Math.PI * 1.15;
-        bat.rotation.z = (handX - 0.5) * 0.6;
-      }
+      applyBatPose(bat, batSwing, batTargetX, batTargetY);
+
+      // Motion trail follows the bat through the fast part of the swing.
+      const trailAlpha = batSwing > 0.16 && batSwing < 0.68 ? 0.16 : 0;
+      batGhosts.forEach((g, i) => {
+        applyBatPose(g, Math.max(0, batSwing - (0.05 + i * 0.055)), batTargetX, batTargetY);
+        const op = trailAlpha * (i === 0 ? 1 : 0.45);
+        g.traverse((o) => { if (o.isMesh) o.material.opacity = op; });
+      });
 
       // bowler animation
       if (bowler && ballState === 'bowling') {
@@ -470,11 +569,14 @@ export function createCricket() {
       }
 
     } else if (state.phase === 'bowling') {
-      // player bowls: aim with hand X, swing to deliver
+      // First person bowling: you're at the bowler's end with a ball in hand.
       bowlAim = (handX - 0.5) * 2;
       if (switchCtrl.connected) bowlAim = switchCtrl.aimX;
-      if (bat) { bat.position.x = 0.4; bat.position.y = 1.0; bat.rotation.x = -Math.PI / 2; batSwing = 0; }
-      if (batsman) batsman.position.z = 9;
+      if (bat) bat.visible = false;
+      batGhosts.forEach((g) => { g.visible = false; });
+      if (bowler) bowler.visible = false;
+      if (batsman) { batsman.visible = true; batsman.position.z = 9; }
+      if (heldBall) heldBall.visible = ballState === 'idle';
 
       // detect swing to deliver
       if (ballState === 'idle' && !bowlCharging) {
@@ -568,7 +670,7 @@ export function createCricket() {
       }
     }
 
-    renderScene();
+    renderScene(dt);
   }
 
   function tryHit(h) {
@@ -626,16 +728,30 @@ export function createCricket() {
     ballState = 'idle';
     bowlTimer = (phase === 'bowling') ? rand(1.0, 1.5) : rand(1.2, 1.8);
     hitWindow = false; hitTime = 0;
-    batSwinging = false; batSwing = 0; swingCooldown = 0;
+    // Let the swing animation finish naturally — don't snap the bat back.
     bowlCharging = false; bowlPower = 0;
   }
 
-  function renderScene() {
+  function renderScene(dt = 0.016) {
     if (!renderer || !scene || !camera) return;
     const t = (performance.now() / 1000) - t0;
-    camera.position.x = Math.sin(t * 0.2) * 0.4;
-    camera.position.y = 9 + Math.sin(t * 0.3) * 0.15;
-    camera.lookAt(0, 1, 0);
+    if (state.phase === 'batting') {
+      // At the crease: small breathing bob, view follows your hands.
+      camPosTarget.set(
+        (handX - 0.5) * 0.5,
+        1.72 + Math.sin(t * 1.6) * 0.025 + (0.5 - handY) * 0.12,
+        9.45,
+      );
+      camLookTarget.set((handX - 0.5) * 2.4, 1.15 + (0.5 - handY) * 0.85, -6);
+    } else {
+      // Bowler's end: look down the pitch at the waiting batsman.
+      camPosTarget.set(bowlAim * 0.35, 1.8 + Math.sin(t * 1.3) * 0.02, -9.45);
+      camLookTarget.set(bowlAim * 1.6, 1.0, 6);
+    }
+    const k = 1 - Math.pow(0.0008, clamp(dt, 0.001, 0.1));
+    camera.position.lerp(camPosTarget, k);
+    camLook.lerp(camLookTarget, k);
+    camera.lookAt(camLook);
     renderer.render(scene, camera);
     updateResultOverlay();
   }
@@ -670,7 +786,7 @@ export function createCricket() {
     if (!bug) {
       bug = document.createElement('div');
       bug.id = 'cricket-scorebug';
-      bug.style.cssText = 'position:fixed;right:2rem;top:2rem;z-index:5;background:rgba(8,6,14,0.7);border:1px solid rgba(255,255,255,0.15);border-radius:1rem;padding:0.8rem 1.2rem;font-weight:800;letter-spacing:0.05em;backdrop-filter:blur(8px);pointer-events:none;';
+      bug.style.cssText = 'position:fixed;left:2rem;top:7rem;z-index:5;background:rgba(8,6,14,0.7);border:1px solid rgba(255,255,255,0.15);border-radius:1rem;padding:0.6rem 1rem;font-weight:800;letter-spacing:0.05em;backdrop-filter:blur(8px);pointer-events:none;';
       document.body.appendChild(bug);
     }
     bug.innerHTML = state.phase === 'batting'
@@ -691,6 +807,15 @@ export function createCricket() {
     cleanup() { cleanup(); },
     isOver() { return !state.running && (state.balls > 0 || state.oppBalls > 0); },
     get mode() { return 'classic'; },
-    get _debug() { return { ballState, phase: state.phase, bowlTimer, sceneReady: !!scene, ballExists: !!ball, batExists: !!bat }; },
+    get _debug() {
+      return {
+        ballState, phase: state.phase, bowlTimer, sceneReady: !!scene,
+        ballZ: ballPos ? Number(ballPos.z.toFixed(2)) : null,
+        ballExists: !!ball, batExists: !!bat, firstPerson: !!camera,
+        batSwing: Number(batSwing.toFixed(2)), swinging: batSwinging,
+        camZ: camera ? Number(camera.position.z.toFixed(2)) : null,
+        ghosts: batGhosts.length,
+      };
+    },
   };
 }
