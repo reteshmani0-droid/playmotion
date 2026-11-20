@@ -8,6 +8,7 @@
  * The simulation itself lives in game/engine.js.
  */
 import { Game, GAME_LIST } from './game/engine.js';
+import { switchController } from './switch-controller.js';
 import { AudioEngine } from './game/audio.js';
 import { Relay } from '../shared/net.js';
 import { MSG, CMD, SCREEN, isValidHands } from '../shared/protocol.js';
@@ -48,6 +49,7 @@ let selectedGameId = String(store.get('selectedGame', 'fruitninja') || 'fruitnin
 let soloCamera = Boolean(store.get('soloCamera', false));
 let soloTracker = null;
 let soloVideo = null;
+let currentBest = 0;
 
 function bestFor(id) { return Number(store.get(`best.${id}`, 0)) || 0; }
 function setBestFor(id, v) { store.set(`best.${id}`, v); }
@@ -695,6 +697,13 @@ function handleAction(action, el) {
       syncSettingsUi();
       if (soloCamera) startSoloCamera(); else stopSoloCamera();
       toast(soloCamera ? 'Camera on this device enabled.' : 'Camera on this device disabled.');
+      break;
+    case 'enable-switch-gyro':
+      switchController.enableGyro().then((res) => {
+        toast(res.reason, res.ok ? 3200 : 5000);
+        const btn = document.querySelector('[data-action="enable-switch-gyro"]');
+        if (btn && res.ok) btn.textContent = 'GYRO ON';
+      });
       break;
     case 'recalibrate':
       closeOverlay();

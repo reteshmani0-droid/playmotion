@@ -80,6 +80,7 @@ Phone (camera) ──MediaPipe Hands──► hand landmarks ──WebSocket─�
 - **Mouse** — hold left button and drag to slice / tap
 - **Keyboard** — arrows move focus, Enter/Space select, Esc pause/back, M mute, F fullscreen
 - **Gamepad** — D-pad navigate, A select, B back, right stick as a fallback blade
+- **Nintendo Switch** — Pro Controller / Joy-Cons work over Bluetooth. Right stick aims the bat, A/ZR/R swings or bowls. On Chrome/Edge you can optionally enable Joy-Con gyro in Settings (experimental).
 
 ## Calibration
 

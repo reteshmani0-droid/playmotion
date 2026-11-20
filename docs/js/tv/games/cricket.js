@@ -11,9 +11,17 @@
  */
 import { WORLD } from '../game/config.js';
 import { clamp, rand, randInt } from '../../shared/util.js';
+import { switchController as switchCtrl } from '../switch-controller.js';
 
 let THREE = null;
 let loadingPromise = null;
+let activeSwingHandler = null;
+
+// One shared listener that always points at the currently active cricket game.
+if (!switchCtrl._playMotionCricketHook) {
+  switchCtrl._playMotionCricketHook = true;
+  switchCtrl.onSwing(() => { activeSwingHandler?.(); });
+}
 
 export function createCricket() {
   if (!THREE && !loadingPromise) {
@@ -34,6 +42,12 @@ export function createCricket() {
   };
 
   let host = null;
+  activeSwingHandler = () => {
+    if (state.phase === 'batting' && state.running && ballState === 'bowling' && ballPos && ballPos.z > 4 && ballPos.z < 12) {
+      batSwinging = true; batSwing = 0; swingCooldown = 0.6; lastSwingSpeed = 1200;
+      tryHit(host);
+    }
+  };
   let glCanvas = null, renderer = null, scene = null, camera = null;
   let ball = null, bat = null, batsman = null, bowler = null;
   let stumpsBat = null, stumpsBowl = null;
@@ -85,6 +99,7 @@ export function createCricket() {
   }
 
   function cleanup() {
+    activeSwingHandler = null;
     if (glCanvas && glCanvas.parentNode) glCanvas.parentNode.removeChild(glCanvas);
     glCanvas = null;
     if (renderer) { renderer.dispose(); renderer = null; }
@@ -156,7 +171,6 @@ export function createCricket() {
     if (scene) return;
     const TH = T();
     if (!TH) return;
-    window.__ensureRan = true;
     try {
     if (!ballPos) { ballPos = new TH.Vector3(); ballVel = new TH.Vector3(); ballTarget = new TH.Vector3(); }
 
@@ -389,6 +403,13 @@ export function createCricket() {
     handX = handX * 0.7 + bx * 0.3;
     handY = handY * 0.7 + by * 0.3;
 
+    // Nintendo Switch controller support
+    switchCtrl.poll();
+    if (switchCtrl.connected) {
+      handX = 0.5 + switchCtrl.aimX * 0.15;
+      handY = 0.5 + switchCtrl.aimY * 0.15;
+    }
+
     if (state.phase === 'batting') {
       // bat follows hand
       batTargetX = (handX - 0.5) * 2.4;
@@ -451,6 +472,7 @@ export function createCricket() {
     } else if (state.phase === 'bowling') {
       // player bowls: aim with hand X, swing to deliver
       bowlAim = (handX - 0.5) * 2;
+      if (switchCtrl.connected) bowlAim = switchCtrl.aimX;
       if (bat) { bat.position.x = 0.4; bat.position.y = 1.0; bat.rotation.x = -Math.PI / 2; batSwing = 0; }
       if (batsman) batsman.position.z = 9;
 
@@ -461,6 +483,12 @@ export function createCricket() {
             bowlCharging = true; bowlPower = clamp(b.speed / 1200, 0.3, 1.0);
             bowl(); break;
           }
+        }
+        // Switch controller: swing button to bowl
+        if (!bowlCharging && switchCtrl.swingPressed) {
+          bowlCharging = true; bowlPower = 0.7;
+          bowlAim = switchCtrl.aimX;
+          bowl();
         }
       }
 
@@ -663,6 +691,6 @@ export function createCricket() {
     cleanup() { cleanup(); },
     isOver() { return !state.running && (state.balls > 0 || state.oppBalls > 0); },
     get mode() { return 'classic'; },
-    get _debug() { return { ballState, phase: state.phase, bowlTimer, sceneReady: !!scene, sceneType: scene?.constructor?.name, ballExists: !!ball, batExists: !!bat, hasEnsureRun: window.__ensureRan }; },
+    get _debug() { return { ballState, phase: state.phase, bowlTimer, sceneReady: !!scene, ballExists: !!ball, batExists: !!bat }; },
   };
 }
