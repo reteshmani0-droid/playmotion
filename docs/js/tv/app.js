@@ -875,7 +875,7 @@ function renderPairing() {
 
   $('room-code').textContent = roomCode;
   const base = mobileOrigin || location.origin;
-  const url = `${base.replace(/\/$/, '')}/m?c=${roomCode}`;
+  const url = `${base.replace(/\/$/, '')}/mobile.html?c=${roomCode}`;
   $('pair-url').textContent = url.replace(/^https?:\/\//, '');
   renderQr(url, base);
 }

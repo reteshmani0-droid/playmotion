@@ -24,7 +24,7 @@ import { ensureCertificate } from './tls.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const PUBLIC_DIR = path.join(ROOT, 'public');
+const PUBLIC_DIR = path.join(ROOT, 'docs');
 
 const HTTP_PORT = Number(process.env.PORT || 8080);
 const HTTPS_PORT = Number(process.env.HTTPS_PORT || 8443);
